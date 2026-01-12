@@ -123,13 +123,11 @@ func (e *Egress) serve(port uint16, conn net.Conn) {
 	var readError error
 	wg.Go(func() {
 		_, readError = io.Copy(conn, upstreamConn)
-		_ = closeWrite(conn)
 	})
 
 	var writeError error
 	wg.Go(func() {
 		_, writeError = io.Copy(upstreamConn, conn)
-		_ = closeWrite(upstreamConn)
 	})
 
 	wg.Wait()
