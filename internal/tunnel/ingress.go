@@ -121,19 +121,13 @@ func (i *Ingress) serve(port uint16, conn net.Conn) {
 	var readError error
 	wg.Go(func() {
 		_, readError = io.Copy(conn, upstreamConn)
-		if readError != nil {
-			conn.Close()
-			upstreamConn.Close()
-		}
+		_ = closeWrite(conn)
 	})
 
 	var writeError error
 	wg.Go(func() {
 		_, writeError = io.Copy(upstreamConn, conn)
-		if writeError != nil {
-			conn.Close()
-			upstreamConn.Close()
-		}
+		_ = closeWrite(upstreamConn)
 	})
 
 	wg.Wait()
