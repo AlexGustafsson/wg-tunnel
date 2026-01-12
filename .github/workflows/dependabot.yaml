@@ -1,0 +1,44 @@
+# Allow Dependabot to automatically merge updates
+# In addition to this, there's a ruleset in GitHub to ensure that the CI checks
+# need to succeed before merge, which should stop Dependabot from merging
+# breaking changes.
+# SEE: https://docs.github.com/en/code-security/dependabot/working-with-dependabot/automating-dependabot-with-github-actions#enable-auto-merge-on-a-pull-request
+name: Dependabot auto-merge
+on: pull_request
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dependabot:
+    name: Dependabot
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'AlexGustafsson/wg-tunnel'
+
+    permissions:
+      contents: write # Enable auto merge
+      pull-requests: write # Enable auto merge
+
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@08eff52bf64351f401fb50d4972fa95b9f2c2d1b # v2.4.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for Dependabot PRs
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        run: gh pr merge --auto --rebase "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Approve Dependabot PRs
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
