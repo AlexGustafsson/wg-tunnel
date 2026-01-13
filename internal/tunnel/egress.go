@@ -16,7 +16,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 )
 
-const MTU = 1420
+const MTU = 1200
 
 type Egress struct {
 	tun       tun.Device
