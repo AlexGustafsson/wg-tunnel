@@ -3,11 +3,11 @@ package tunnel
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
 	"net/netip"
 	"sync"
+	"time"
 
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
@@ -118,21 +118,49 @@ func (i *Ingress) serve(port uint16, conn net.Conn) {
 
 	var wg sync.WaitGroup
 
-	var readError error
+	// Forward traffic to upstream
 	wg.Go(func() {
-		_, readError = io.Copy(conn, upstreamConn)
+		defer conn.Close()
+		defer upstreamConn.Close()
+
+		var buffer [MTU]byte
+		for {
+			_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+			n, err := conn.Read(buffer[:])
+			if err != nil {
+				return
+			}
+
+			_ = upstreamConn.SetWriteDeadline(time.Now().Add(60 * time.Second))
+			_, err = upstreamConn.Write(buffer[:n])
+			if err != nil {
+				return
+			}
+		}
 	})
 
-	var writeError error
+	// Forward traffic from upstream
 	wg.Go(func() {
-		_, writeError = io.Copy(upstreamConn, conn)
+		defer conn.Close()
+		defer upstreamConn.Close()
+
+		var buffer [MTU]byte
+		for {
+			_ = upstreamConn.SetReadDeadline(time.Now().Add(60 * time.Second))
+			n, err := upstreamConn.Read(buffer[:])
+			if err != nil {
+				return
+			}
+
+			_ = conn.SetWriteDeadline(time.Now().Add(60 * time.Second))
+			_, err = conn.Write(buffer[:n])
+			if err != nil {
+				return
+			}
+		}
 	})
 
 	wg.Wait()
-
-	if readError != nil || writeError != nil {
-		slog.Warn("Failed to serve connection", slog.Any("error", errors.Join(readError, writeError)))
-	}
 }
 
 func (i *Ingress) ListenAndServe() error {
