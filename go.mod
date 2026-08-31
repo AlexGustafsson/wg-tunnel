@@ -3,7 +3,7 @@ module github.com/AlexGustafsson/wg-tunnel
 go 1.26.5
 
 require (
-	golang.org/x/crypto v0.54.0
+	golang.org/x/crypto v0.55.0
 	golang.zx2c4.com/wireguard v0.0.0-20260522210424-ecfc5a8d5446
 	gvisor.dev/gvisor v0.0.0-20250503011706-39ed1f5ac29c
 )
